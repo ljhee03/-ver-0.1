@@ -1,51 +1,39 @@
 export default function CleanupBar({ selectedCount, onGoBack, onDelete }) {
+  const hasSelected = selectedCount > 0;
+
   return (
     <div style={{
-      position: 'fixed',
-      bottom: 0,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      width: '100%',
-      maxWidth: 430,
-      padding: '12px 20px',
-      paddingBottom: 24,
-      background: 'var(--bg-card)',
-      borderTop: '1px solid var(--border-color)',
-      display: 'flex',
-      gap: 12,
-      zIndex: 101,
+      position: 'absolute',
+      left: 16, right: 16, bottom: 84,
+      display: 'flex', gap: 10,
     }}>
-      <button
+      <div
         onClick={onGoBack}
         style={{
-          flex: 1,
-          padding: '14px 0',
-          borderRadius: 12,
-          border: '1px solid var(--border-color)',
-          background: 'var(--bg-card)',
-          fontSize: 15,
-          fontWeight: 500,
-          color: 'var(--text-primary)',
+          flex: 1, height: 50, borderRadius: 16,
+          background: '#fff', border: '1px solid #e6e6ea',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 15, fontWeight: 700, color: '#555',
+          cursor: 'pointer',
+          boxShadow: '0 6px 16px rgba(0,0,0,0.08)',
         }}
       >
         돌아가기
-      </button>
-      <button
+      </div>
+      <div
         onClick={onDelete}
-        disabled={selectedCount === 0}
         style={{
-          flex: 1,
-          padding: '14px 0',
-          borderRadius: 12,
-          background: selectedCount > 0 ? 'var(--dday-0)' : 'var(--border-color)',
-          color: '#fff',
-          fontSize: 15,
-          fontWeight: 500,
-          opacity: selectedCount > 0 ? 1 : 0.5,
+          flex: 1, height: 50, borderRadius: 16,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 15, fontWeight: 700,
+          cursor: 'pointer',
+          boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
+          background: hasSelected ? '#E5544B' : '#ecd6d4',
+          color: hasSelected ? '#fff' : '#c79a96',
         }}
       >
-        {selectedCount > 0 ? `${selectedCount}개 삭제` : '삭제'}
-      </button>
+        {selectedCount}개 삭제
+      </div>
     </div>
   );
 }

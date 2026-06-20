@@ -1,20 +1,34 @@
-import { useNavigate } from 'react-router-dom';
-import { getDday, getDdayLabel, getDdayColor, shouldShowDday } from '../utils/dateUtils';
+import { getDaysRemaining } from '../utils/dateUtils';
 
-export default function ProductCard({ product, cleanupMode, selected, onSelect }) {
-  const navigate = useNavigate();
-  const dday = getDday(product.expiryDate);
-  const ddayLabel = getDdayLabel(dday);
-  const ddayColor = getDdayColor(dday);
-  const showDday = shouldShowDday(dday);
-  const isZero = product.quantity === 0;
+function getBadge(item) {
+  if (item.qty === 0) return { text: '품절', style: 'background:#FBE0DD;color:#D24A3F;' };
+  const d = getDaysRemaining(item.exp);
+  if (d !== null && d <= 2) return { text: '임박', style: 'background:#FBE6C8;color:#C5781C;' };
+  if (item.low) return { text: '부족', style: 'background:#EFE6D6;color:#977C49;' };
+  return null;
+}
+
+function getSub(item) {
+  const d = getDaysRemaining(item.exp);
+  if (d === null) return null;
+  let color = '#8C8C92';
+  if (d <= 3) color = '#C5781C';
+  if (d <= 1) color = '#D94F44';
+  if (d <= 0) color = '#D24A3F';
+  let text;
+  if (d < 0) text = '소비기한 ' + (-d) + '일 지남';
+  else if (d === 0) text = '오늘까지';
+  else text = '소비기한 ' + d + '일 남음';
+  return { text, color };
+}
+
+export default function ProductCard({ item, accent, organize, selected, onSelect, onDetail }) {
+  const badge = getBadge(item);
+  const sub = getSub(item);
 
   const handleClick = () => {
-    if (cleanupMode) {
-      onSelect(product.id);
-    } else {
-      navigate(`/product/${product.id}`);
-    }
+    if (organize) onSelect(item.id);
+    else onDetail(item.id);
   };
 
   return (
@@ -22,95 +36,94 @@ export default function ProductCard({ product, cleanupMode, selected, onSelect }
       onClick={handleClick}
       style={{
         position: 'relative',
-        width: 76,
-        minWidth: 76,
+        background: '#fff',
+        borderRadius: 18,
+        padding: '11px 12px',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
+        justifyContent: 'space-between',
+        boxShadow: '0 3px 12px rgba(40,40,45,0.05)',
         cursor: 'pointer',
+        overflow: 'hidden',
+        height: 96,
       }}
     >
-      {cleanupMode && (
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div style={{
-          position: 'absolute',
-          top: -4,
-          left: -4,
-          width: 20,
-          height: 20,
-          borderRadius: 4,
-          border: `2px solid ${selected ? 'var(--accent)' : 'var(--border-color)'}`,
-          background: selected ? 'var(--accent)' : 'var(--bg-card)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 2,
+          width: 40, height: 40, borderRadius: 12,
+          background: '#f3f3f6',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 23, lineHeight: 1,
         }}>
-          {selected && (
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          )}
+          {item.emoji}
         </div>
-      )}
-
-      {showDday && (
-        <div style={{
-          position: 'absolute',
-          top: -6,
-          right: -6,
-          background: ddayColor,
-          color: '#fff',
-          fontSize: 10,
-          fontWeight: 700,
-          padding: '2px 6px',
-          borderRadius: 10,
-          zIndex: 1,
-          whiteSpace: 'nowrap',
-        }}>
-          {ddayLabel}
-        </div>
-      )}
-
-      <div style={{
-        width: 64,
-        height: 64,
-        borderRadius: 14,
-        background: isZero ? 'var(--stock-zero)' : 'var(--bg-section)',
-        border: isZero ? '2px solid var(--stock-zero-border)' : '1px solid var(--border-color)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 6,
-        transition: 'all 0.2s',
-      }}>
-        {product.image ? (
-          <img src={product.image} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8 }} />
-        ) : (
-          <span style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>
-            {product.name.charAt(0)}
-          </span>
+        {badge && !organize && (
+          <div style={{
+            padding: '3px 8px', borderRadius: 8,
+            fontSize: 13, fontWeight: 800, lineHeight: 1.3,
+            ...parseInlineStyle(badge.style),
+          }}>
+            {badge.text}
+          </div>
         )}
       </div>
+      <div>
+        <div style={{
+          fontSize: 14.5, fontWeight: 700, color: '#2b2b2e',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
+          {item.name}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 3, overflow: 'hidden' }}>
+          <span style={{ fontSize: 19, fontWeight: 800, color: '#1d1d20', letterSpacing: -0.5, lineHeight: 1, flexShrink: 0 }}>
+            {item.qty}
+          </span>
+          {sub && (
+            <span style={{
+              fontSize: 13, fontWeight: 600, lineHeight: 1,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              color: sub.color,
+            }}>
+              {sub.text}
+            </span>
+          )}
+        </div>
+      </div>
 
-      <span style={{
-        fontSize: 12,
-        color: 'var(--text-primary)',
-        textAlign: 'center',
-        lineHeight: 1.2,
-        maxWidth: 76,
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-      }}>
-        {product.name}
-      </span>
-      <span style={{
-        fontSize: 11,
-        color: isZero ? 'var(--dday-0)' : 'var(--text-tertiary)',
-        fontWeight: isZero ? 600 : 400,
-      }}>
-        {product.quantity}
-      </span>
+      {organize && selected && (
+        <div style={{
+          position: 'absolute', inset: 0, borderRadius: 18,
+          pointerEvents: 'none',
+          boxShadow: `0 0 0 2.5px ${accent} inset`,
+        }} />
+      )}
+
+      {organize && (
+        <div style={{
+          position: 'absolute', top: 8, right: 8,
+          width: 24, height: 24, borderRadius: '50%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14, fontWeight: 800,
+          ...(selected
+            ? { background: accent, color: '#fff' }
+            : { background: 'rgba(255,255,255,0.92)', color: 'transparent', boxShadow: '0 0 0 2px #d4d4d8 inset' }
+          ),
+        }}>
+          {selected ? '✓' : ''}
+        </div>
+      )}
     </div>
   );
+}
+
+function parseInlineStyle(str) {
+  const obj = {};
+  str.split(';').forEach(pair => {
+    const [key, val] = pair.split(':');
+    if (key && val) {
+      const camel = key.trim().replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+      obj[camel] = val.trim();
+    }
+  });
+  return obj;
 }

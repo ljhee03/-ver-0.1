@@ -1,36 +1,48 @@
-import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AppProvider, useApp } from './context/AppContext';
+import { useState, useCallback } from 'react';
+import { AppProvider } from './context/AppContext';
 import HomePage from './pages/HomePage';
-import ProductDetail from './pages/ProductDetail';
 import AddProduct from './pages/AddProduct';
-import Settings from './pages/Settings';
+import ProductDetail from './pages/ProductDetail';
 import Notifications from './pages/Notifications';
 
-function ThemeWrapper({ children }) {
-  const { settings } = useApp();
+function AppInner() {
+  const [screen, setScreen] = useState('main');
+  const [tab, setTab] = useState('fridge');
+  const [detailId, setDetailId] = useState(null);
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', settings.darkMode ? 'dark' : 'light');
-  }, [settings.darkMode]);
+  const openAdd = useCallback(() => setScreen('add'), []);
+  const openDetail = useCallback((id) => {
+    setDetailId(id);
+    setScreen('detail');
+  }, []);
+  const openNotif = useCallback(() => setScreen('notif'), []);
+  const goMain = useCallback(() => setScreen('main'), []);
 
-  return children;
+  if (screen === 'add') {
+    return <AddProduct tab={tab} onBack={goMain} />;
+  }
+  if (screen === 'detail') {
+    return <ProductDetail itemId={detailId} onBack={goMain} />;
+  }
+  if (screen === 'notif') {
+    return <Notifications onBack={goMain} onOpenDetail={openDetail} />;
+  }
+
+  return (
+    <HomePage
+      tab={tab}
+      onTabChange={setTab}
+      onOpenAdd={openAdd}
+      onOpenDetail={openDetail}
+      onOpenNotif={openNotif}
+    />
+  );
 }
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppProvider>
-        <ThemeWrapper>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/product/:id" element={<ProductDetail />} />
-            <Route path="/add" element={<AddProduct />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/notifications" element={<Notifications />} />
-          </Routes>
-        </ThemeWrapper>
-      </AppProvider>
-    </BrowserRouter>
+    <AppProvider>
+      <AppInner />
+    </AppProvider>
   );
 }

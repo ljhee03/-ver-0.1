@@ -1,111 +1,93 @@
-import { createContext, useContext, useCallback } from 'react';
+import { createContext, useContext, useCallback, useRef } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { SAMPLE_DATA } from '../utils/constants';
-import { generateId, todayString, isImminent, isDepleted } from '../utils/dateUtils';
+import { buildSampleData } from '../utils/constants';
+import { getDaysRemaining, todayString } from '../utils/dateUtils';
 
 const AppContext = createContext();
 
 export function AppProvider({ children }) {
-  const [products, setProducts] = useLocalStorage('inventory-products', SAMPLE_DATA);
-  const [settings, setSettings] = useLocalStorage('inventory-settings', {
-    darkMode: false,
-    defaultStorage: 'refrigerator',
-    notifications: true,
+  const [items, setItems] = useLocalStorage('inv-items', buildSampleData());
+  const [settings, setSettings] = useLocalStorage('inv-settings', {
+    expAlert: true,
+    lowAlert: true,
   });
-  const [notifications, setNotifications] = useLocalStorage('inventory-notifications', []);
-  const [recentNames, setRecentNames] = useLocalStorage('inventory-recent-names', []);
 
-  const addProduct = useCallback((product) => {
-    const newProduct = {
-      ...product,
-      id: generateId(),
-      createdAt: todayString(),
+  const nextId = useRef(items.length > 0 ? Math.max(...items.map(i => i.id)) + 1 : 1);
+
+  const addItem = useCallback((item) => {
+    const id = nextId.current++;
+    const newItem = {
+      id,
+      loc: item.loc,
+      cat: item.cat,
+      name: item.name.trim(),
+      emoji: item.emoji,
+      qty: item.qty,
+      low: item.qty > 0 && item.qty <= 1,
+      reg: todayString(),
+      exp: item.exp || '',
     };
-    setProducts(prev => [...prev, newProduct]);
+    setItems(prev => [...prev, newItem]);
+    return newItem;
+  }, [setItems]);
 
-    setRecentNames(prev => {
-      const filtered = prev.filter(n => n !== product.name);
-      return [product.name, ...filtered].slice(0, 10);
-    });
+  const updateItem = useCallback((id, updates) => {
+    setItems(prev => prev.map(i => i.id === id ? { ...i, ...updates } : i));
+  }, [setItems]);
 
-    return newProduct;
-  }, [setProducts, setRecentNames]);
+  const deleteItem = useCallback((id) => {
+    setItems(prev => prev.filter(i => i.id !== id));
+  }, [setItems]);
 
-  const updateProduct = useCallback((id, updates) => {
-    setProducts(prev =>
-      prev.map(p => p.id === id ? { ...p, ...updates, createdAt: todayString() } : p)
-    );
-  }, [setProducts]);
-
-  const deleteProduct = useCallback((id) => {
-    setProducts(prev => prev.filter(p => p.id !== id));
-  }, [setProducts]);
-
-  const deleteProducts = useCallback((ids) => {
-    setProducts(prev => prev.filter(p => !ids.includes(p.id)));
-  }, [setProducts]);
-
-  const getProductsByStorage = useCallback((storage) => {
-    return products.filter(p => p.storage === storage);
-  }, [products]);
-
-  const getImminentCount = useCallback((storage) => {
-    return products.filter(p => p.storage === storage && isImminent(p.expiryDate)).length;
-  }, [products]);
-
-  const getDepletedCount = useCallback((storage) => {
-    return products.filter(p => p.storage === storage && isDepleted(p.quantity)).length;
-  }, [products]);
+  const deleteItems = useCallback((ids) => {
+    const idSet = new Set(ids);
+    setItems(prev => prev.filter(i => !idSet.has(i.id)));
+  }, [setItems]);
 
   const updateSettings = useCallback((updates) => {
     setSettings(prev => ({ ...prev, ...updates }));
   }, [setSettings]);
 
-  const addNotification = useCallback((notification) => {
-    setNotifications(prev => [{
-      ...notification,
-      id: generateId(),
-      date: todayString(),
-      read: false,
-    }, ...prev]);
-  }, [setNotifications]);
-
-  const markNotificationRead = useCallback((id) => {
-    setNotifications(prev =>
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
-    );
-  }, [setNotifications]);
-
-  const markAllNotificationsRead = useCallback(() => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  }, [setNotifications]);
-
-  const hasUnreadNotifications = notifications.some(n => !n.read);
-
   const resetData = useCallback(() => {
-    setProducts(SAMPLE_DATA);
-    setNotifications([]);
-    setRecentNames([]);
-  }, [setProducts, setNotifications, setRecentNames]);
+    setItems(buildSampleData());
+  }, [setItems]);
+
+  const getItemsForLoc = useCallback((loc, cat) => {
+    return items.filter(i => i.loc === loc && i.cat === cat);
+  }, [items]);
+
+  const getStats = useCallback((loc) => {
+    const its = items.filter(i => i.loc === loc);
+    return {
+      total: its.length,
+      short: its.filter(i => i.qty === 0 || i.low).length,
+      soon: its.filter(i => {
+        const d = getDaysRemaining(i.exp);
+        return d !== null && d <= 2;
+      }).length,
+    };
+  }, [items]);
+
+  const getUrgentCount = useCallback(() => {
+    return items.filter(i => {
+      if (i.qty === 0) return true;
+      const d = getDaysRemaining(i.exp);
+      return d !== null && d <= 2;
+    }).length;
+  }, [items]);
 
   const value = {
-    products,
+    items,
     settings,
-    notifications,
-    recentNames,
-    addProduct,
-    updateProduct,
-    deleteProduct,
-    deleteProducts,
-    getProductsByStorage,
-    getImminentCount,
-    getDepletedCount,
+    addItem,
+    updateItem,
+    deleteItem,
+    deleteItems,
     updateSettings,
-    addNotification,
-    markNotificationRead,
-    markAllNotificationsRead,
-    hasUnreadNotifications,
     resetData,
+    getItemsForLoc,
+    getStats,
+    getUrgentCount,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

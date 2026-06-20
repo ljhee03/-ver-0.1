@@ -8,26 +8,22 @@ export default function Toast({ message, onClose, duration = 2000 }) {
 
   return (
     <div style={{
-      position: 'fixed',
-      bottom: 100,
+      position: 'absolute',
       left: '50%',
+      bottom: 100,
       transform: 'translateX(-50%)',
-      background: 'var(--toast-bg)',
+      background: 'rgba(30,30,34,0.92)',
       color: '#fff',
-      padding: '12px 24px',
-      borderRadius: 8,
+      padding: '11px 20px',
+      borderRadius: 22,
       fontSize: 14,
-      zIndex: 9999,
-      animation: 'fadeInUp 0.3s ease',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+      fontWeight: 600,
+      whiteSpace: 'nowrap',
+      animation: 'toastIn 0.25s ease',
+      zIndex: 50,
+      boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
     }}>
       {message}
-      <style>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateX(-50%) translateY(10px); }
-          to { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
-      `}</style>
     </div>
   );
 }

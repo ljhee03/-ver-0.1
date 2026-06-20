@@ -1,288 +1,240 @@
-import { useState, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import RecentItems from '../components/RecentItems';
 import Toast from '../components/Toast';
-import { STORAGES, SECTIONS, STORAGE_KEYS } from '../utils/constants';
+import { LOCATIONS, LOC_KEYS, ICONS, RECENT_SUGGESTIONS } from '../utils/constants';
 
-export default function AddProduct() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { addProduct, recentNames } = useApp();
-  const fileInputRef = useRef(null);
+export default function AddProduct({ tab, onBack }) {
+  const { addItem } = useApp();
+  const defaultLoc = tab === 'settings' ? 'fridge' : tab;
 
-  const defaultStorage = location.state?.defaultStorage || 'refrigerator';
-
+  const [loc, setLoc] = useState(defaultLoc);
+  const [cat, setCat] = useState(LOCATIONS[defaultLoc].cats[0]);
   const [name, setName] = useState('');
-  const [image, setImage] = useState(null);
-  const [storage, setStorage] = useState(defaultStorage);
-  const [section, setSection] = useState(SECTIONS[defaultStorage]?.[0]?.value || null);
-  const [quantity, setQuantity] = useState(1);
-  const [expiryDate, setExpiryDate] = useState('');
+  const [emoji, setEmoji] = useState('🥛');
+  const [qty, setQty] = useState(1);
+  const [exp, setExp] = useState('');
   const [toast, setToast] = useState(null);
 
-  const sections = SECTIONS[storage] || [];
-  const hasSections = sections.length > 0;
+  const accent = LOCATIONS[loc].accent;
+  const body = LOCATIONS[loc].body;
 
-  const isValid = name.trim() && storage && (!hasSections || section);
-
-  const handleStorageChange = (newStorage) => {
-    setStorage(newStorage);
-    const newSections = SECTIONS[newStorage] || [];
-    setSection(newSections.length > 0 ? newSections[0].value : null);
-  };
-
-  const handleImageUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setImage(ev.target.result);
-    reader.readAsDataURL(file);
+  const handleLocChange = (newLoc) => {
+    setLoc(newLoc);
+    setCat(LOCATIONS[newLoc].cats[0]);
   };
 
   const handleSave = () => {
-    if (!isValid) return;
-    addProduct({
-      name: name.trim(),
-      image,
-      storage,
-      section: hasSections ? section : null,
-      quantity,
-      expiryDate: expiryDate || null,
-      memo: '',
-    });
-    setToast('저장되었습니다.');
-    setTimeout(() => navigate('/'), 500);
+    if (!name.trim()) return;
+    addItem({ loc, cat, name, emoji, qty, exp });
+    setToast('저장되었어요');
+    setTimeout(onBack, 500);
   };
 
-  const handleRecentSelect = (selectedName) => {
-    setName(selectedName);
-  };
+  const isValid = name.trim().length > 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{
+      flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0,
+      background: body,
+    }}>
       <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '12px 20px',
-        height: 'var(--header-height)',
+        flexShrink: 0,
+        padding: '48px 18px 6px',
+        display: 'flex', alignItems: 'center', gap: 10,
       }}>
-        <button onClick={() => navigate(-1)} style={{ padding: 4 }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <span style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: 600 }}>
-          새 품목 등록
-        </span>
-        <div style={{ width: 32 }} />
-      </div>
-
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 120px' }}>
-        {/* 사진 */}
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>
-            사진 <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(선택)</span>
-          </label>
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              width: '100%',
-              height: 160,
-              borderRadius: 14,
-              background: 'var(--bg-section)',
-              border: '2px dashed var(--border-color)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              overflow: 'hidden',
-            }}
-          >
-            {image ? (
-              <img src={image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <div style={{ textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <path d="m21 15-5-5L5 21" />
-                </svg>
-                <div style={{ fontSize: 12, marginTop: 4 }}>탭하여 사진 추가</div>
-              </div>
-            )}
-          </div>
-          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
-        </div>
-
-        {/* 최근 등록 품목 */}
-        <RecentItems names={recentNames} onSelect={handleRecentSelect} />
-
-        {/* 품목명 */}
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>
-            품목명 <span style={{ color: 'var(--dday-0)' }}>*</span>
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="품목명을 입력하세요"
-            style={{
-              width: '100%',
-              padding: '14px 16px',
-              borderRadius: 12,
-              border: '1px solid var(--border-color)',
-              background: 'var(--bg-card)',
-              fontSize: 15,
-              outline: 'none',
-            }}
-          />
-        </div>
-
-        {/* 저장소 */}
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>
-            저장소 <span style={{ color: 'var(--dday-0)' }}>*</span>
-          </label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {STORAGE_KEYS.map(key => (
-              <button
-                key={key}
-                onClick={() => handleStorageChange(key)}
-                style={{
-                  flex: 1,
-                  padding: '12px 0',
-                  borderRadius: 10,
-                  border: storage === key ? '2px solid var(--accent)' : '1px solid var(--border-color)',
-                  background: storage === key ? 'var(--accent)' : 'var(--bg-card)',
-                  color: storage === key ? 'var(--white)' : 'var(--text-primary)',
-                  fontSize: 14,
-                  fontWeight: 500,
-                }}
-              >
-                {STORAGES[key].label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 구분 */}
-        {hasSections && (
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>
-              구분 <span style={{ color: 'var(--dday-0)' }}>*</span>
-            </label>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {sections.map(s => (
-                <button
-                  key={s.value}
-                  onClick={() => setSection(s.value)}
-                  style={{
-                    flex: sections.length <= 3 ? 1 : 'none',
-                    padding: '12px 16px',
-                    borderRadius: 10,
-                    border: section === s.value ? '2px solid var(--accent)' : '1px solid var(--border-color)',
-                    background: section === s.value ? 'var(--accent)' : 'var(--bg-card)',
-                    color: section === s.value ? 'var(--white)' : 'var(--text-primary)',
-                    fontSize: 14,
-                    fontWeight: 500,
-                  }}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 수량 */}
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>
-            수량 <span style={{ color: 'var(--dday-0)' }}>*</span>
-          </label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button
-              onClick={() => setQuantity(q => Math.max(0, q - 1))}
-              style={{
-                width: 44, height: 44, borderRadius: 10,
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-section)',
-                fontSize: 20,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >−</button>
-            <input
-              type="number"
-              value={quantity}
-              onChange={e => setQuantity(Math.max(0, parseInt(e.target.value) || 0))}
-              style={{
-                width: 64, textAlign: 'center', fontSize: 18, fontWeight: 600,
-                border: '1px solid var(--border-color)', borderRadius: 10,
-                padding: '10px 0', background: 'var(--bg-card)',
-              }}
-            />
-            <button
-              onClick={() => setQuantity(q => q + 1)}
-              style={{
-                width: 44, height: 44, borderRadius: 10,
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-section)',
-                fontSize: 20,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >+</button>
-          </div>
-        </div>
-
-        {/* 소비기한 */}
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>
-            소비기한 <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(선택)</span>
-          </label>
-          <input
-            type="date"
-            value={expiryDate}
-            onChange={e => setExpiryDate(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '14px 16px',
-              borderRadius: 12,
-              border: '1px solid var(--border-color)',
-              background: 'var(--bg-card)',
-              fontSize: 15,
-            }}
-          />
-        </div>
-      </div>
-
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '100%',
-        maxWidth: 430,
-        padding: '12px 20px',
-        paddingBottom: 24,
-        background: 'var(--bg-primary)',
-      }}>
-        <button
-          onClick={handleSave}
-          disabled={!isValid}
+        <div
+          onClick={onBack}
           style={{
-            width: '100%',
-            padding: '16px 0',
-            borderRadius: 12,
-            background: isValid ? 'var(--accent)' : 'var(--border-color)',
-            color: '#fff',
-            fontSize: 16,
-            fontWeight: 600,
-            opacity: isValid ? 1 : 0.5,
+            width: 38, height: 38, borderRadius: '50%',
+            background: 'rgba(255,255,255,0.75)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2b2e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: '#2b2b2e' }}>새 품목 등록</div>
+      </div>
+
+      <div style={{
+        flex: 1, overflowY: 'auto', minHeight: 0,
+        padding: '8px 18px 18px',
+        scrollbarWidth: 'none',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'center', margin: '6px 0 2px' }}>
+          <div style={{
+            width: 76, height: 76, borderRadius: 23,
+            background: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 40,
+            boxShadow: '0 6px 18px rgba(0,0,0,0.07)',
+          }}>
+            {emoji}
+          </div>
+        </div>
+
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#8a8a90', margin: '14px 2px 9px' }}>
+          아이콘 선택
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {ICONS.map(ic => (
+            <div
+              key={ic}
+              onClick={() => setEmoji(ic)}
+              style={{
+                width: 43, height: 43, borderRadius: 13,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 22, cursor: 'pointer',
+                background: ic === emoji ? '#fff' : 'rgba(255,255,255,0.55)',
+                boxShadow: ic === emoji ? `0 0 0 2px ${accent} inset` : 'none',
+              }}
+            >
+              {ic}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#8a8a90', margin: '20px 2px 9px' }}>
+          품목 이름
+        </div>
+        <input
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder="예: 우유"
+          style={{
+            width: '100%', height: 50, borderRadius: 15,
+            border: 'none', background: '#fff',
+            padding: '0 16px', fontSize: 15, color: '#2b2b2e',
+            outline: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+          }}
+        />
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 11 }}>
+          {RECENT_SUGGESTIONS.map(r => (
+            <div
+              key={r.name}
+              onClick={() => { setName(r.name); setEmoji(r.emoji); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                padding: '7px 13px', borderRadius: 18,
+                background: 'rgba(255,255,255,0.7)',
+                fontSize: 13, fontWeight: 600, color: '#76767c',
+                cursor: 'pointer',
+              }}
+            >
+              <span>{r.emoji}</span>
+              <span>{r.name}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#8a8a90', margin: '20px 2px 9px' }}>
+          보관 장소
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {LOC_KEYS.map(key => (
+            <div
+              key={key}
+              onClick={() => handleLocChange(key)}
+              style={{
+                flex: 1, height: 46, borderRadius: 15,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 6, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                background: loc === key ? LOCATIONS[key].accent : 'rgba(255,255,255,0.7)',
+                color: loc === key ? '#fff' : '#76767c',
+              }}
+            >
+              <span>{LOCATIONS[key].emoji}</span>
+              {LOCATIONS[key].name}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#8a8a90', margin: '20px 2px 9px' }}>
+          분류
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {LOCATIONS[loc].cats.map(c => (
+            <div
+              key={c}
+              onClick={() => setCat(c)}
+              style={{
+                padding: '10px 18px', borderRadius: 20,
+                fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                background: cat === c ? accent : 'rgba(255,255,255,0.7)',
+                color: cat === c ? '#fff' : '#76767c',
+              }}
+            >
+              {c}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#8a8a90', margin: '20px 2px 9px' }}>
+          수량
+        </div>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          background: '#fff', borderRadius: 16, padding: 6,
+          width: 'fit-content',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+        }}>
+          <div
+            onClick={() => setQty(q => Math.max(0, q - 1))}
+            style={{
+              width: 42, height: 42, borderRadius: 12,
+              background: '#f1f1f4',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 24, color: '#666', cursor: 'pointer',
+            }}
+          >−</div>
+          <div style={{ width: 54, textAlign: 'center', fontSize: 19, fontWeight: 800, color: '#1d1d20' }}>
+            {qty}
+          </div>
+          <div
+            onClick={() => setQty(q => q + 1)}
+            style={{
+              width: 42, height: 42, borderRadius: 12,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 24, color: '#fff', cursor: 'pointer',
+              background: accent,
+            }}
+          >+</div>
+        </div>
+
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#8a8a90', margin: '20px 2px 9px' }}>
+          소비기한 (선택)
+        </div>
+        <input
+          type="date"
+          value={exp}
+          onChange={e => setExp(e.target.value)}
+          style={{
+            width: '100%', height: 50, borderRadius: 15,
+            border: 'none', background: '#fff',
+            padding: '0 16px', fontSize: 15, color: '#555',
+            outline: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+          }}
+        />
+      </div>
+
+      <div style={{ flexShrink: 0, padding: '14px 18px 26px' }}>
+        <div
+          onClick={handleSave}
+          style={{
+            width: '100%', height: 54, borderRadius: 17,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 16, fontWeight: 800, cursor: 'pointer',
+            background: isValid ? accent : 'rgba(0,0,0,0.07)',
+            color: isValid ? '#fff' : '#b0b0b4',
           }}
         >
           저장
-        </button>
+        </div>
       </div>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
